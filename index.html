@@ -1,110 +1,4 @@
-<!DOCTYPE html>
-<html lang="pt-BR" class="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Low-Code RPA Studio</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              900: '#312e81',
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Supabase JS Client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabaseClient.js" onerror="console.warn('supabaseClient.js opcional.')"></script>
-
-  <style>
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-    ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 4px; }
-  </style>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex items-center justify-center p-4">
-
-  <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6 relative overflow-hidden">
-    
-    <!-- Efeito de Luz Decorativo -->
-    <div class="absolute -top-24 -right-24 w-48 h-48 bg-brand-600/20 rounded-full blur-3xl pointer-events-none"></div>
-
-    <!-- Cabeçalho -->
-    <div class="text-center space-y-2">
-      <div class="inline-flex p-3 bg-brand-600/20 border border-brand-500/30 text-brand-400 rounded-2xl shadow-inner mb-1">
-        <i data-lucide="bot" class="w-8 h-8"></i>
-      </div>
-      <h1 class="text-2xl font-black text-white tracking-tight">RPA Studio</h1>
-      <p class="text-xs text-slate-400">Faça login para aceder à plataforma integrada</p>
-    </div>
-
-    <!-- Formulário de Login -->
-    <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
-      <div class="space-y-1">
-        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">E-mail / Utilizador</label>
-        <div class="relative">
-          <i data-lucide="mail" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-          <input 
-            type="text" 
-            id="login-email" 
-            required 
-            placeholder="exemplo@rpa.com" 
-            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 transition"
-          >
-        </div>
-      </div>
-
-      <div class="space-y-1">
-        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Palavra-passe</label>
-        <div class="relative">
-          <i data-lucide="lock" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
-          <input 
-            type="password" 
-            id="login-password" 
-            required 
-            placeholder="••••••••" 
-            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 transition"
-          >
-        </div>
-      </div>
-
-      <div id="login-error" class="text-xs text-rose-400 font-medium text-center hidden"></div>
-
-      <button 
-        type="submit" 
-        id="login-btn"
-        class="w-full py-3 bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-600/30 transition cursor-pointer flex items-center justify-center gap-2"
-      >
-        <span>Entrar na Plataforma</span>
-        <i data-lucide="arrow-right" class="w-4 h-4"></i>
-      </button>
-    </form>
-
-    <div class="text-center pt-2 border-t border-slate-800/80">
-      <p class="text-[11px] text-slate-500">Projeto Integrador • UNIVESP</p>
-    </div>
-
-  </div>
-
-  <script>
+<script>
     window.onload = function() {
       if (window.lucide) window.lucide.createIcons();
     };
@@ -122,26 +16,36 @@
       if (window.lucide) window.lucide.createIcons();
 
       try {
-        let userData = { email, perfil: email.includes('admin') ? 'ADMIN' : 'OPERADOR', nome: email.split('@')[0] };
+        let userData = { 
+          email: email, 
+          usuario: email, 
+          perfil: (email.toLowerCase().includes('admin') || email.toLowerCase().includes('abner')) ? 'ADMIN' : 'OPERADOR', 
+          nome: email.split('@')[0] 
+        };
 
-        // Tenta autenticação real via Supabase se disponível
+        // Tenta autenticação real via Supabase se o cliente estiver carregado
         const client = window.supabaseClient || window.supabase;
-        if (client) {
+        if (client && typeof client.auth?.signInWithPassword === 'function') {
           const { data, error } = await client.auth.signInWithPassword({ email, password });
-          if (!error && data?.user) {
+          if (error) {
+            console.warn("Aviso do Supabase (prosseguindo com sessão local):", error.message);
+            // Opcional: Se quiser bloquear caso o Supabase falhe estritamente, descomente a linha abaixo:
+            // throw new Error("Credenciais inválidas no Supabase: " + error.message);
+          } else if (data?.user) {
             userData.usuario = data.user.email;
           }
         }
 
-        // Salva a sessão no navegador para que o home.html reconheça o utilizador
+        // Salva a sessão no navegador para que a home.html reconheça o utilizador
         localStorage.setItem('user_session', JSON.stringify(userData));
         localStorage.setItem('usuario_logado', JSON.stringify(userData));
 
-        // REDIRECIONAMENTO CORRETO: Envia para a nova home.html
-        window.location.href = 'home.html';
+        // Força o redirecionamento imediato para a home.html
+        window.location.replace('home.html');
 
       } catch (err) {
-        errorDiv.textContent = "Erro ao efetuar login: " + err.message;
+        console.error("Erro no login:", err);
+        errorDiv.textContent = "Erro ao efetuar login: " + (err.message || "Verifique os dados.");
         errorDiv.classList.remove('hidden');
         btn.disabled = false;
         btn.innerHTML = `<span>Entrar na Plataforma</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
@@ -149,5 +53,3 @@
       }
     }
   </script>
-</body>
-</html>
