@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Páginas - Plataforma Low-Code RPA Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Chart.js & Plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <!-- SheetJS for Excel (.xlsx, .xls) parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js" onerror="console.warn('supabaseClient.js opcional.')"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background-color: #020617; color: #e2e8f0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.7); }
+
+        .subtab-content { display: none !important; }
+        .subtab-content.active { display: flex !important; }
+
+        .container-editable { position: relative; transition: all 0.2s ease; }
+        .is-admin .container-editable:hover { outline: 2px dashed #3b82f6; outline-offset: 2px; }
+
+        .paint-element {
+            position: absolute;
+            border: 1px dashed #3b82f6;
+            background: rgba(15, 23, 42, 0.85);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            cursor: move;
+            user-select: none;
+            padding: 4px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .paint-element.selected {
+            border: 2px solid #60a5fa !important;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.4);
+            z-index: 20;
+        }
+
+        .resize-handle {
+            width: 8px;
+            height: 8px;
+            background-color: #60a5fa;
+            border: 1px solid #ffffff;
+            position: absolute;
+            z-index: 25;
+        }
+        .resize-handle.nw { top: -4px; left: -4px; cursor: nwse-resize; }
+        .resize-handle.ne { top: -4px; right: -4px; cursor: nesw-resize; }
+        .resize-handle.sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
+        .resize-handle.se { bottom: -4px; right: -4px; cursor: nwse-resize; }
+    </style>
+</head>
+<body class="is-admin">
+
+<div class="flex-1 flex overflow-hidden relative bg-slate-950 h-full flex-col">
+    <div class="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 z-30">
+        <div class="flex items-center gap-3">
+            <button onclick="requestExitToHome()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Sair para o Início">
+                <i data-lucide="arrow-left" class="w-4 h-4 text-slate-400"></i> Sair
+            </button>
+            <div class="h-5 w-[1px] bg-slate-800"></div>
+            <div class="flex items-center gap-1.5 overflow-x-auto" id="creator-subtab-nav">
+                <button onclick="switchSubTab('editor')" id="subnav-editor" class="subnav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-blue-600 text-white flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <i data-lucide="layout" class="w-3.5 h-3.5"></i> Editor de páginas
+                </button>
+                <button onclick="switchSubTab('variaveis')" id="subnav-variaveis" class="subnav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200 flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <i data-lucide="variable" class="w-3.5 h-3.5"></i> Variáveis
+                </button>
+                <button onclick="switchSubTab('acoes_pagina')" id="subnav-acoes_pagina" class="subnav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200 flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <i data-lucide="zap" class="w-3.5 h-3.5"></i> Ações da página
+                </button>
+                <button onclick="switchSubTab('paginas_alvo')" id="subnav-paginas_alvo" class="subnav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200 flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <i data-lucide="target" class="w-3.5 h-3.5"></i> Páginas alvo
+                </button>
+                <button onclick="switchSubTab('acoes_rpa')" id="subnav-acoes_rpa" class="subnav-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200 flex items-center gap-1.5 cursor-pointer shrink-0">
+                    <i data-lucide="bot" class="w-3.5 h-3.5"></i> Ações do RPA
+                </button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="openPainelFullscreen()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 transition cursor-pointer">
+                <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i> Gráfico Studio
+            </button>
+            <button onclick="previewInFrontend()" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition cursor-pointer">
+                <i data-lucide="globe" class="w-3.5 h-3.5 text-cyan-400"></i> Pré-visualizar
+            </button>
+            <button onclick="saveCreatedPageToMenu()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 transition cursor-pointer">
+                <i data-lucide="save" class="w-3.5 h-3.5"></i> Salvar Pág.
+            </button>
+            <button onclick="saveProjectToSupabase()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white flex items-center gap-1.5 shadow-lg transition cursor-pointer">
+                <i data-lucide="cloud" class="w-3.5 h-3.5"></i> Supabase
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden relative">
+        <div id="subtab-editor" class="subtab-content active flex-1 flex flex-col overflow-hidden">
+            <div class="h-10 bg-slate-950 border-b border-slate-800 px-4 flex items-center gap-2 shrink-0 z-20 overflow-x-auto" id="editor-pages-subbar">
+                <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mr-2 shrink-0">Páginas:</div>
+                <div class="flex items-center gap-1 shrink-0" id="subpages-tabs-list">
+                    <button onclick="switchEditorSubpage('main')" id="btn-subpage-main" class="subpage-btn px-3 py-1 rounded text-xs font-medium bg-slate-800 text-blue-400 border border-blue-500/30 cursor-pointer">
+                        Página Principal
+                    </button>
+                </div>
+                <button onclick="addNewPageScope()" class="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded text-xs font-medium flex items-center gap-1 transition shrink-0 cursor-pointer">
+                    <i data-lucide="plus" class="w-3 h-3"></i> Adicionar Página
+                </button>
+            </div>
+
+            <div class="flex-1 flex overflow-hidden relative">
+                <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-10">
+                    <div class="p-3 border-b border-slate-800 bg-slate-950/50 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="boxes" class="w-4 h-4 text-blue-400"></i> Biblioteca
+                            </span>
+                            <span id="creator-component-count" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">0 itens</span>
+                        </div>
+                        <div class="relative flex-1">
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+                            <input type="text" id="search-creator-components" oninput="filterCreatorComponents()" placeholder="Buscar elemento..." class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-3 space-y-6" id="creator-component-library"></div>
+                </aside>
+
+                <main class="flex-1 bg-slate-950 overflow-auto flex flex-col p-4 relative">
+                    <div id="paint-canvas-container" class="w-full h-full min-h-[600px] bg-slate-900 border border-slate-800 rounded-xl relative overflow-hidden shadow-2xl" onclick="deselectPaintElement()">
+                        <div id="paint-canvas-viewport" class="w-full h-full relative"></div>
+                    </div>
+                </main>
+
+                <aside class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 z-10">
+                    <div class="border-b border-slate-800 p-3.5 flex items-center justify-between bg-slate-950/50">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="sliders" class="w-3.5 h-3.5 text-blue-400"></i> Editor de Elemento
+                        </span>
+                        <span id="selected-element-type-badge" class="text-[10px] bg-slate-800 px-2 py-0.5 rounded font-mono text-slate-400">Nenhum</span>
+                    </div>
+
+                    <div id="element-inspector-body" class="flex-1 overflow-y-auto p-4 space-y-5">
+                        <div id="creator-inspector-empty" class="h-full flex flex-col items-center justify-center text-center py-12 text-slate-500 space-y-2">
+                            <i data-lucide="mouse-pointer-click" class="w-8 h-8 stroke-1 text-slate-600"></i>
+                            <p class="text-xs">Escolha um elemento no visualizador central para editar suas propriedades.</p>
+                        </div>
+                        <div id="creator-inspector-form" class="hidden space-y-5 text-xs">
+                            <div class="space-y-2 border-b border-slate-800 pb-4">
+                                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Editor de Texto</label>
+                                <input type="text" id="prop-element-label" oninput="updatePaintElementLabel(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="Texto do elemento...">
+                            </div>
+                            <button onclick="deleteSelectedPaintElement()" class="w-full py-2 px-3 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Eliminar Elemento
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <div id="subtab-variaveis" class="subtab-content flex-1 p-6 space-y-4 overflow-y-auto max-w-4xl mx-auto w-full">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i data-lucide="variable" class="w-5 h-5 text-blue-400"></i> Gerenciador de Variáveis da Página
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-2 pt-2">
+                    <input type="text" id="new-var-name" placeholder="Nome da Variável" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    <select id="new-var-type" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                        <option value="Variável Simples">Variável Simples</option>
+                        <option value="Vetor">Vetor</option>
+                        <option value="Tabela">Tabela</option>
+                    </select>
+                    <button onclick="createNewVariable()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer md:col-span-2">Criar Variável</button>
+                </div>
+                <div id="variables-list-box" class="space-y-2 pt-2">
+                    <p class="text-xs text-slate-500 italic">Nenhuma variável criada até o momento.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="subtab-acoes_pagina" class="subtab-content flex-1 p-6 space-y-4 overflow-y-auto max-w-4xl mx-auto w-full">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h3 class="text-base font-bold text-white mb-2">Eventos Globais</h3>
+                <p class="text-xs text-slate-400">Nenhuma ação global configurada.</p>
+            </div>
+        </div>
+
+        <div id="subtab-paginas_alvo" class="subtab-content flex-1 p-6 space-y-4 overflow-y-auto max-w-4xl mx-auto w-full">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+                <h3 class="text-base font-bold text-white">Páginas Alvo e Fontes RPA</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <input type="text" id="target-name" placeholder="Nome do Alvo" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    <input type="text" id="target-path" placeholder="https://www.google.com" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white">
+                    <button onclick="addTargetPage()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold cursor-pointer">Cadastrar Alvo</button>
+                </div>
+                <div id="target-pages-list-box" class="space-y-2 pt-2">
+                    <p class="text-xs text-slate-500 italic">Nenhum alvo cadastrado.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="subtab-acoes_rpa" class="subtab-content flex-1 p-6 space-y-4 overflow-y-auto max-w-4xl mx-auto w-full">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h3 class="text-base font-bold text-white mb-2">Integração Robôs RPA</h3>
+                <p class="text-xs text-emerald-400 font-bold">Status: Pronto para Sincronização com o Supabase</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-exit-confirm" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400"></i> Sair da Página
+        </h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+            Existem alterações no projeto que não foram salvas. Deseja salvar a página no Supabase antes de sair?
+        </p>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <button onclick="confirmExitWithoutSaving()" class="px-3.5 py-1.5 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 text-xs font-semibold cursor-pointer">Sair sem Salvar</button>
+            <button onclick="confirmExitAndSave()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded shadow-lg text-xs cursor-pointer">Salvar e Sair</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isPageDirty = false;
+    let subpagesData = { 'main': [] };
+    let currentEditorSubpage = 'main';
+
+    let creatorLibrary = [
+        { id: 'c1', name: 'Caixa de Texto', category: 'text_forms', type: 'texto', icon: 'type', html: '<p class="text-slate-200">Texto Editável</p>' },
+        { id: 'c2', name: 'Campo Input Texto', category: 'inputs', type: 'input', icon: 'text-cursor-input', html: '<input type="text" placeholder="Digite o texto..." class="bg-slate-950 border border-slate-800 p-2 rounded text-xs text-white w-full pointer-events-none">' },
+        { id: 'c3', name: 'Botão Enviar', category: 'actions', type: 'botao', icon: 'mouse-pointer-click', html: '<button class="px-4 py-2 bg-blue-600 text-white rounded text-xs font-semibold pointer-events-none">Enviar Formulário</button>' },
+        { id: 'c4', name: 'Exibição Output', category: 'outputs', type: 'output', icon: 'monitor', html: '<div class="p-2 bg-slate-800 rounded border border-slate-700 text-xs text-cyan-400">Resultado Output</div>' },
+        { id: 'c5', name: 'Instrução RPA - Click', category: 'rpa', type: 'rpa', icon: 'bot', html: '<div class="p-2 bg-purple-900/40 border border-purple-500/50 rounded text-xs text-purple-300">RPA: Click Element</div>' },
+        { 
+            id: 'c_grafico', 
+            name: 'Gráfico Studio', 
+            category: 'outputs', 
+            type: 'chart', 
+            icon: 'bar-chart-2', 
+            html: '<div class="w-full h-full flex flex-col justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden graph-card-wrapper"><div class="flex items-center justify-between mb-1"><span class="text-xs font-bold text-white flex items-center gap-1.5"><i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-indigo-400"></i> <span class="chart-title-label" contenteditable="true" oninput="updateChartTitleFromCanvas(this)" title="Clique para editar o título">Gráfico RPA Studio</span></span><button type="button" onclick="openPainelFullscreen()" class="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold rounded shadow transition flex items-center gap-1 cursor-pointer"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Editar</button></div><div class="flex-1 w-full h-full min-h-[140px] relative"><canvas class="canvas-chart-instance w-full h-full"></canvas></div></div>' 
+        }
+    ];
+
+    let creatorVariables = [];
+    let targetPagesList = [];
+    let selectedPaintElement = null;
+    let isDraggingPaint = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    window.onload = function() {
+        loadCreatorLibrary();
+        renderCreatorLibrary();
+        initCanvasChartInstances();
+        
+        window.addEventListener('studioConfigUpdated', (e) => {
+            updateAllCanvasCharts(e.detail);
+        });
+        if(window.lucide) lucide.createIcons();
+    }
+
+    // AJUSTADO: Redireciona para home.html
+    function requestExitToHome() {
+        if (isPageDirty) {
+            openModal('modal-exit-confirm');
+        } else {
+            window.location.href = 'home.html';
+        }
+    }
+
+    // AJUSTADO: Redireciona para home.html
+    async function confirmExitAndSave() {
+        await saveProjectToSupabase();
+        isPageDirty = false;
+        closeModal('modal-exit-confirm');
+        window.location.href = 'home.html';
+    }
+
+    // AJUSTADO: Redireciona para home.html
+    function confirmExitWithoutSaving() {
+        isPageDirty = false;
+        closeModal('modal-exit-confirm');
+        window.location.href = 'home.html';
+    }
+
+    function initCanvasChartInstances() {
+        const viewport = document.getElementById('paint-canvas-viewport');
+        if (!viewport) return;
+        
+        let savedState = null;
+        try {
+            const raw = localStorage.getItem("chart_studio_full_state");
+            if (raw) savedState = JSON.parse(raw);
+        } catch(e) {}
+
+        viewport.querySelectorAll('.paint-element').forEach(el => {
+            const canvas = el.querySelector('.canvas-chart-instance');
+            const titleSpan = el.querySelector('.chart-title-label');
+            if (titleSpan && savedState && savedState.chartTitle) {
+                titleSpan.textContent = savedState.chartTitle;
+            }
+            if (canvas && savedState) {
+                renderChartOnCanvasElement(canvas, savedState);
+            }
+        });
+    }
+
+    function updateAllCanvasCharts(configState) {
+        const viewport = document.getElementById('paint-canvas-viewport');
+        if (!viewport) return;
+        viewport.querySelectorAll('.paint-element').forEach(el => {
+            const canvas = el.querySelector('.canvas-chart-instance');
+            const titleSpan = el.querySelector('.chart-title-label');
+            if (titleSpan && configState.chartTitle) {
+                titleSpan.textContent = configState.chartTitle;
+            }
+            if (canvas) {
+                renderChartOnCanvasElement(canvas, configState);
+            }
+        });
+    }
+
+    function updateChartTitleFromCanvas(el) {
+        const newTitle = el.textContent.trim();
+        let savedState = {};
+        try {
+            savedState = JSON.parse(localStorage.getItem("chart_studio_full_state") || "{}");
+        } catch(e){}
+        savedState.chartTitle = newTitle;
+        localStorage.setItem("chart_studio_full_state", JSON.stringify(savedState));
+        window.dispatchEvent(new CustomEvent('studioConfigUpdated', { detail: savedState }));
+        isPageDirty = true;
+    }
+
+    function renderChartOnCanvasElement(canvasEl, state) {
+        if (!canvasEl || !window.Chart) return;
+        const ctx = canvasEl.getContext('2d');
+        if (canvasEl.chartInstance) {
+            canvasEl.chartInstance.destroy();
+        }
+
+        const COLOR_PALETTES = {
+            indigo: ["#6366f1", "#818cf8", "#a5b4fc", "#c7d2fe", "#312e81", "#4f46e5"],
+            emerald: ["#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#065f46", "#059669"],
+            sunset: ["#f43f5e", "#fb7185", "#fb923c", "#fbbf24", "#9f1239", "#e11d48"],
+            cyber: ["#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#1e40af", "#7c3aed"]
+        };
+
+        const rawData = state.rawData || [];
+        const xAxis = state.xAxis || 'Variavel_1';
+        const yAxes = state.selectedYAxes || ['Variavel_2'];
+        const palette = COLOR_PALETTES[state.paletteKey || 'indigo'];
+        const labels = rawData.map(d => String(d[xAxis] || ''));
+        
+        let chartType = state.selectedChart === 'horizontal_bar' ? 'bar' : (state.selectedChart || 'bar');
+        let indexAxis = state.selectedChart === 'horizontal_bar' ? 'y' : 'x';
+
+        const datasets = yAxes.map((yKey, idx) => {
+            const color = palette[idx % palette.length];
+            return {
+                label: String(yKey).toUpperCase(),
+                data: rawData.map(d => Number(d[yKey]) || 0),
+                backgroundColor: color + '88',
+                borderColor: color,
+                borderWidth: 2
+            };
+        });
+
+        canvasEl.chartInstance = new Chart(ctx, {
+            type: chartType,
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: indexAxis,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { display: false } },
+                    y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#1e293b' } }
+                }
+            }
+        });
+    }
+
+    function loadCreatorLibrary() {
+        const saved = localStorage.getItem('lowcode_creator_library');
+        if (saved) {
+            try { 
+                let parsed = JSON.parse(saved);
+                if (!parsed.some(item => item.id === 'c_grafico')) {
+                    parsed.push(creatorLibrary.find(item => item.id === 'c_grafico'));
+                }
+                creatorLibrary = parsed;
+            } catch(e) {}
+        }
+    }
+
+    function switchSubTab(subtabId) {
+        document.querySelectorAll('.subtab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.subnav-btn').forEach(el => {
+            el.classList.remove('bg-blue-600', 'text-white');
+            el.classList.add('text-slate-400');
+        });
+
+        const targetSub = document.getElementById('subtab-' + subtabId);
+        const targetBtn = document.getElementById('subnav-' + subtabId);
+
+        if (targetSub) targetSub.classList.add('active');
+        if (targetBtn) {
+            targetBtn.classList.add('bg-blue-600', 'text-white');
+            targetBtn.classList.remove('text-slate-400');
+        }
+        if(window.lucide) lucide.createIcons();
+    }
+
+    function switchEditorSubpage(scope) {
+        saveCurrentEditorCanvasState();
+        currentEditorSubpage = scope;
+        document.querySelectorAll('.subpage-btn').forEach(btn => {
+            btn.className = "subpage-btn px-3 py-1 rounded text-xs font-medium text-slate-400 hover:bg-slate-900 border border-transparent cursor-pointer";
+        });
+        const activeBtn = document.getElementById('btn-subpage-' + scope);
+        if (activeBtn) {
+            activeBtn.className = "subpage-btn px-3 py-1 rounded text-xs font-medium bg-slate-800 text-blue-400 border border-blue-500/30 cursor-pointer";
+        }
+        loadEditorCanvasState(scope);
+    }
+
+    function saveCurrentEditorCanvasState() {
+        const viewport = document.getElementById('paint-canvas-viewport');
+        if (viewport) subpagesData[currentEditorSubpage] = viewport.innerHTML;
+    }
+
+    function loadEditorCanvasState(scope) {
+        const viewport = document.getElementById('paint-canvas-viewport');
+        if (!viewport) return;
+        viewport.innerHTML = subpagesData[scope] || '';
+        rebindPaintElementsEvents();
+        deselectPaintElement();
+        initCanvasChartInstances();
+    }
+
+    function addNewPageScope() {
+        saveCurrentEditorCanvasState();
+        const list = document.getElementById('subpages-tabs-list');
+        const count = Object.keys(subpagesData).length;
+        const scopeId = 'sub' + count;
+        subpagesData[scopeId] = '';
+
+        const btn = document.createElement('button');
+        btn.id = 'btn-subpage-' + scopeId;
+        btn.className = "subpage-btn px-3 py-1 rounded text-xs font-medium text-slate-400 hover:bg-slate-900 border border-transparent cursor-pointer";
+        btn.textContent = `Subpágina ${count}`;
+        btn.onclick = () => switchEditorSubpage(scopeId);  
+        
+        list.appendChild(btn); 
+        switchEditorSubpage(scopeId); 
+        if(window.lucide) lucide.createIcons(); 
+    }  
+
+    function rebindPaintElementsEvents() { 
+        const viewport = document.getElementById('paint-canvas-viewport'); 
+        if (!viewport) return; 
+        viewport.querySelectorAll('.paint-element').forEach(elem => { 
+            elem.onclick = (e) => { 
+                e.stopPropagation(); 
+                selectPaintElement(elem); 
+            }; 
+            elem.onmousedown = (e) => handlePaintElemMouseDown(e, elem); 
+        }); 
+        if(window.lucide) lucide.createIcons(); 
+    }  
+
+    function filterCreatorComponents() { 
+        const query = document.getElementById('search-creator-components').value; 
+        renderCreatorLibrary(query); 
+    }  
+
+    function renderCreatorLibrary(filterText = '') { 
+        const container = document.getElementById('creator-component-library'); 
+        if (!container) return; 
+        container.innerHTML = '';  
+        
+        const filtered = creatorLibrary.filter(item => item.name.toLowerCase().includes(filterText.toLowerCase())); 
+        document.getElementById('creator-component-count').textContent = `${filtered.length} itens`;
+
+        const categories = {
+            text_forms: 'Caixa de Textos e Formulários',
+            media: 'Mídias',
+            actions: 'Ações e Botões',
+            inputs: 'Entradas (Inputs)',
+            outputs: 'Saídas (Outputs)',
+            rpa: 'Instruções para o RPA'
+        };
+
+        Object.keys(categories).forEach((catKey) => {
+            const catItems = filtered.filter(item => item.category === catKey);
+            if(catItems.length === 0) return;
+
+            const catDiv = document.createElement('div');
+            catDiv.className = 'space-y-2';
+            catDiv.innerHTML = `<span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">${categories[catKey]}</span>`;
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-2 gap-2';
+
+            catItems.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'p-2 bg-slate-950 hover:bg-slate-800/80 border border-slate-800 hover:border-blue-500/50 rounded-lg cursor-pointer transition flex flex-col justify-between group';
+                card.onclick = () => addElementToPaintCanvas(item);
+                card.innerHTML = `<span class="text-[11px] font-semibold text-slate-200 group-hover:text-blue-400 truncate">${item.name}</span>`;
+                grid.appendChild(card);
+            });
+            catDiv.appendChild(grid);
+            container.appendChild(catDiv);
+        });
+
+        if(window.lucide) lucide.createIcons();
+    }
+
+    function addElementToPaintCanvas(item) {
+        isPageDirty = true;
+        const viewport = document.getElementById('paint-canvas-viewport');
+        const elemId = 'paint-elem-' + Date.now();
+
+        const elem = document.createElement('div');
+        elem.id = elemId;
+        elem.className = 'paint-element';
+        elem.style.left = '40px';
+        elem.style.top = '40px';
+        
+        if (item.type === 'chart') {
+            elem.style.width = '380px';
+            elem.style.height = '240px';
+        } else {
+            elem.style.width = '200px';
+            elem.style.height = '60px';
+        }
+
+        elem.innerHTML = `<div class="element-content w-full h-full flex flex-col justify-center overflow-hidden text-xs text-white">${item.html}</div>`;
+
+        elem.onclick = (e) => { e.stopPropagation(); selectPaintElement(elem); };
+        elem.onmousedown = (e) => handlePaintElemMouseDown(e, elem);
+        viewport.appendChild(elem);
+        selectPaintElement(elem);
+
+        if (item.type === 'chart') {
+            const canvas = elem.querySelector('.canvas-chart-instance');
+            let currentState = window.activeStudioConfigState;
+            if (!currentState) {
+                try { currentState = JSON.parse(localStorage.getItem("chart_studio_full_state")); } catch(e) {}
+            }
+            if (canvas && currentState) {
+                renderChartOnCanvasElement(canvas, currentState);
+            }
+        }
+
+        saveCurrentEditorCanvasState();
+        if(window.lucide) lucide.createIcons();
+    }
+
+    function selectPaintElement(elem) {
+        deselectPaintElement();
+        selectedPaintElement = elem;
+        selectedPaintElement.classList.add('selected');
+
+        document.getElementById('creator-inspector-empty').classList.add('hidden');
+        document.getElementById('creator-inspector-form').classList.remove('hidden');
+    }
+
+    function deselectPaintElement() {
+        if (selectedPaintElement) {
+            selectedPaintElement.classList.remove('selected');
+            selectedPaintElement = null;
+        }
+        document.getElementById('creator-inspector-empty').classList.remove('hidden');
+        document.getElementById('creator-inspector-form').classList.add('hidden');
+    }
+
+    function handlePaintElemMouseDown(e, elem) {
+        e.stopPropagation();
+        selectPaintElement(elem);
+        isDraggingPaint = true;
+        const rect = elem.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+
+        document.onmousemove = (eEvt) => {
+            const viewport = document.getElementById('paint-canvas-viewport');
+            const vRect = viewport.getBoundingClientRect();
+            if (isDraggingPaint) {
+                elem.style.left = (eEvt.clientX - vRect.left - dragOffsetX) + 'px';
+                elem.style.top = (eEvt.clientY - vRect.top - dragOffsetY) + 'px';
+                isPageDirty = true;
+            }
+        };
+        document.onmouseup = () => {
+            isDraggingPaint = false;
+            document.onmousemove = null;
+            document.onmouseup = null;
+            saveCurrentEditorCanvasState();
+        };
+    }
+
+    function updatePaintElementLabel(value) {
+        if (!selectedPaintElement) return;
+        const content = selectedPaintElement.querySelector('.element-content');
+        if (content) {
+            const p = content.querySelector('p');
+            if (p) p.innerText = value;
+        }
+        isPageDirty = true;
+        saveCurrentEditorCanvasState();
+    }
+
+    function deleteSelectedPaintElement() {
+        if (selectedPaintElement) {
+            selectedPaintElement.remove();
+            deselectPaintElement();
+            isPageDirty = true;
+            saveCurrentEditorCanvasState();
+        }
+    }
+
+    function openPainelFullscreen() {
+        saveCurrentEditorCanvasState();
+        window.location.href = 'painel.html';
+    }
+
+    function createNewVariable() {
+        const name = document.getElementById('new-var-name').value.trim();
+        const type = document.getElementById('new-var-type').value;
+        if (!name) return;
+        creatorVariables.push({ name, type });
+        document.getElementById('new-var-name').value = '';
+        renderVariablesList();
+        isPageDirty = true;
+    }
+
+    function renderVariablesList() {
+        const box = document.getElementById('variables-list-box');
+        if (!box) return;
+        if (creatorVariables.length === 0) {
+            box.innerHTML = '<p class="text-xs text-slate-500 italic">Nenhuma variável criada até o momento.</p>';
+            return;
+        }
+        box.innerHTML = '';
+        creatorVariables.forEach((v, idx) => {
+            box.innerHTML += `<div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-xs"><span>${v.name} (${v.type})</span><button onclick="creatorVariables.splice(${idx},1);renderVariablesList()" class="text-red-400 cursor-pointer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></div>`;
+        });
+        if(window.lucide) lucide.createIcons();
+    }
+
+    function addTargetPage() {
+        const name = document.getElementById('target-name').value.trim();
+        const path = document.getElementById('target-path').value.trim();
+        if (!name || !path) return;
+        targetPagesList.push({ name, path });
+        renderTargetPagesList();
+        isPageDirty = true;
+    }
+
+    function renderTargetPagesList() {
+        const box = document.getElementById('target-pages-list-box');
+        if (!box) return;
+        box.innerHTML = targetPagesList.map(t => `<div class="bg-slate-950 p-2 rounded text-xs">${t.name} - ${t.path}</div>`).join('') || '<p class="text-xs text-slate-500 italic">Nenhum alvo cadastrado.</p>';
+    }
+
+    function previewInFrontend() {
+        saveCurrentEditorCanvasState();
+        let combinedHtml = '';
+        Object.keys(subpagesData).forEach(scope => {
+            combinedHtml += `<div class="mb-12">${subpagesData[scope]}</div>`;
+        });
+        const previewWin = window.open('', '_blank');
+        previewWin.document.write(`<!DOCTYPE html><html><head><script src="https://cdn.tailwindcss.com"><\/script></head><body class="bg-slate-950 text-white p-8">${combinedHtml}</body></html>`);
+        previewWin.document.close();
+    }
+
+    function saveCreatedPageToMenu() {
+        saveCurrentEditorCanvasState();
+        isPageDirty = false;
+        alert("Página salva com sucesso no rascunho local!");
+    }
+
+    async function saveProjectToSupabase() {
+        saveCurrentEditorCanvasState();
+        const client = window.supabaseClient || window.supabase;
+        if (!client) {
+            alert("Cliente Supabase não inicializado.");
+            return;
+        }
+
+        const userEmail = localStorage.getItem("user_email") || "admin@rpa.com";
+        const nomePagina = "nova_pagina_" + Date.now();
+        const htmlConteudo = subpagesData['main'] || '<p>Página vazia</p>';
+
+        const { error } = await client
+            .from('paginas_criadas')
+            .upsert({
+                usuario: userEmail,
+                nome_pagina: nomePagina,
+                codigo_fonte_html: htmlConteudo,
+                status: 'publicada',
+                atualizado_em: new Date()
+            }, { onConflict: 'nome_pagina' });
+
+        if (error) {
+            alert("Erro ao salvar no Supabase: " + error.message);
+        } else {
+            alert(`Página salva com sucesso no Supabase e indexada! 🎉`);
+            isPageDirty = false;
+        }
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+</script>
+</body>
+</html>

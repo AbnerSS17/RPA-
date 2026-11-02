@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baixar App RPA — RPA Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background-color: #020617; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl relative text-center space-y-6">
+        
+        <!-- ÍCONE E CABEÇALHO DA PÁGINA -->
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg mx-auto">
+            <i data-lucide="download-cloud" class="w-8 h-8"></i>
+        </div>
+
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-white">Instalador do <span class="text-blue-500">RPA Local</span></h1>
+            <p class="text-xs text-slate-400 mt-2">Transfira o aplicativo desktop para automatizar fluxos e conectar o seu ambiente local com a plataforma em nuvem do Supabase.</p>
+        </div>
+
+        <!-- INDICADOR DA VERSÃO ATUAL -->
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-blue-400">
+            <i data-lucide="tag" class="w-3.5 h-3.5"></i>
+            <span>Versão Atual: <strong id="lbl-versao-atual" class="text-white">Carregando...</strong></span>
+        </div>
+
+        <!-- CARACTERÍSTICAS PRINCIPAIS -->
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-3 text-xs text-slate-300">
+            <div class="flex items-center gap-3">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                <span>Sincronização automática de dados e sessões</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                <span>Execução de rotinas e robôs em segundo plano</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                <span>Compatível com múltiplos sistemas operacionais</span>
+            </div>
+        </div>
+
+        <!-- PAINEL DE UPLOAD DE EXECUTÁVEL (EXCLUSIVO ADMIN) -->
+        <div id="admin-upload-panel" class="hidden bg-slate-950/80 border border-blue-900/60 rounded-xl p-4 text-left space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span class="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i> Gerenciar Pasta de Executáveis (Admin)
+                </span>
+            </div>
+            <div>
+                <label class="block text-[11px] font-medium text-slate-400 mb-1">Selecionar Novo Arquivo Executável (.exe)</label>
+                <input type="file" id="input-arquivo-exe" accept=".exe,.zip,.msi" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer">
+            </div>
+            <button id="btn-salvar-executavel" onclick="uploadArquivoExecutavel()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2 rounded-lg text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
+                <i data-lucide="upload-cloud" class="w-4 h-4"></i> Enviar Executável para a Pasta
+            </button>
+        </div>
+
+        <!-- BOTÕES DE GUIAS DE INSTALAÇÃO -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <a href="instalar_rpa.html" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700">
+                <i data-lucide="help-circle" class="w-4 h-4"></i> Como instalar o RPA
+            </a>
+            <a href="reinstalar_rpa.html" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Reinstalar o RPA
+            </a>
+        </div>
+
+        <!-- BOTÕES PRINCIPAIS DE DOWNLOAD E VOLTAR -->
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+            <button id="btn-baixar-executavel" onclick="verificarEExecutarDownload()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer">
+                <i data-lucide="download" class="w-4 h-4"></i> Instalar
+            </button>
+            <a href="index.html" class="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-sm transition flex items-center justify-center">
+                Voltar ao Início
+            </a>
+        </div>
+    </div>
+
+    <script>
+        let supabaseClient = window.supabaseClient;
+        let isAdmin = false;
+
+        async function verificarPerfilAdmin() {
+            const simulatedVision = localStorage.getItem('simulated_vision');
+            if (simulatedVision === 'user') {
+                isAdmin = false;
+                document.getElementById('admin-upload-panel').classList.add('hidden');
+                return;
+            }
+
+            const sessionData = localStorage.getItem('user_session') || sessionStorage.getItem('user_session');
+            if (sessionData) {
+                try {
+                    const user = JSON.parse(sessionData);
+                    const perfil = (user.perfil || user.role || '').toUpperCase();
+                    if (perfil === 'ADMIN') {
+                        isAdmin = true;
+                        document.getElementById('admin-upload-panel').classList.remove('hidden');
+                    }
+                } catch (e) {}
+            }
+        }
+
+        async function carregarInformacoesPasta() {
+            if (!supabaseClient) return;
+
+            try {
+                // Lista os arquivos dentro do bucket 'executavel'
+                const { data: files, error } = await supabaseClient.storage
+                    .from('executavel')
+                    .list('', { limit: 10, sortBy: { column: 'updated_at', order: 'desc' } });
+
+                if (!error && files && files.length > 0) {
+                    // Pega o arquivo mais recente que não seja uma pasta vazia (.emptyFolderPlaceholder)
+                    const arquivoValido = files.find(f => f.name !== '.emptyFolderPlaceholder');
+                    if (arquivoValido) {
+                        document.getElementById('lbl-versao-atual').innerText = arquivoValido.name;
+                    } else {
+                        document.getElementById('lbl-versao-atual').innerText = "Nenhum arquivo";
+                    }
+                } else {
+                    document.getElementById('lbl-versao-atual').innerText = "Pasta Vazia";
+                }
+            } catch (e) {
+                document.getElementById('lbl-versao-atual').innerText = "Erro ao verificar";
+            }
+        }
+
+        async function verificarEExecutarDownload() {
+            if (!supabaseClient) {
+                alert("Erro: Cliente Supabase não configurado.");
+                return;
+            }
+
+            try {
+                const { data: files, error } = await supabaseClient.storage
+                    .from('executavel')
+                    .list('', { limit: 10, sortBy: { column: 'updated_at', order: 'desc' } });
+
+                const arquivoValido = files ? files.find(f => f.name !== '.emptyFolderPlaceholder') : null;
+
+                if (!error && arquivoValido) {
+                    // Pega a URL pública do arquivo encontrado na pasta
+                    const { data: publicUrlData } = supabaseClient.storage
+                        .from('executavel')
+                        .getPublicUrl(arquivoValido.name);
+
+                    if (publicUrlData && publicUrlData.publicUrl) {
+                        window.open(publicUrlData.publicUrl, '_blank');
+                        return;
+                    }
+                }
+
+                // Se a pasta estiver vazia ou ocorrer erro
+                alert("Sem executável para baixar no momento.");
+            } catch (e) {
+                alert("Sem executável para baixar no momento.");
+            }
+        }
+
+        async function uploadArquivoExecutavel() {
+            if (!isAdmin) return;
+
+            const fileInput = document.getElementById('input-arquivo-exe');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Por favor, selecione um arquivo executável para enviar.");
+                return;
+            }
+
+            const btnSalvar = document.getElementById('btn-salvar-executavel');
+            btnSalvar.innerText = "Enviando arquivo...";
+            btnSalvar.disabled = true;
+
+            const fileName = file.name;
+
+            const { error: uploadError } = await supabaseClient.storage
+                .from('executavel')
+                .upload(fileName, file, { upsert: true });
+
+            if (uploadError) {
+                alert("Erro ao enviar arquivo para o bucket executavel: " + uploadError.message);
+            } else {
+                alert("Executável enviado com sucesso para a pasta!");
+                fileInput.value = "";
+                await carregarInformacoesPasta();
+            }
+
+            btnSalvar.innerHTML = '<i data-lucide="upload-cloud" class="w-4 h-4"></i> Enviar Executável para a Pasta';
+            btnSalvar.disabled = false;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        document.addEventListener("DOMContentLoaded", async function() {
+            await verificarPerfilAdmin();
+            await carregarInformacoesPasta();
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>

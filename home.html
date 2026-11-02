@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma Low-Code RPA Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Chart.js & Lucide Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background-color: #020617; color: #e2e8f0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 4px; }
+
+        .tab-content { display: none !important; }
+        .tab-content.active { display: flex !important; flex-direction: column; width: 100%; height: 100%; }
+    </style>
+</head>
+<body id="app-body" class="is-admin">
+
+<!-- CABEÇALHO SUPERIOR -->
+<header class="h-16 border-b border-slate-800 bg-slate-900 px-6 flex items-center justify-between shrink-0 z-40">
+    <div class="flex items-center gap-3">
+        <button onmouseenter="openSidebar()" onclick="toggleSidebar()" class="p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg transition flex items-center justify-center cursor-pointer" title="Menu Principal">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+        <h2 class="text-base font-bold text-white tracking-tight">RPA Studio - Plataforma Integrada</h2>
+    </div>
+
+    <!-- CONTROLES SUPERIORES: Status RPA, Alerta de Versão, Conectar, Perfil, Visão e Logout -->
+    <div class="flex items-center gap-3">
+        
+        <!-- BOTÃO DE ALERTA DE NOVA VERSÃO (Visível apenas se RPA online e versão desatualizada) -->
+        <div id="rpa-update-container" class="hidden">
+            <button onclick="window.location.href='baixar_rpa.html'" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold shadow-lg transition flex items-center gap-1.5 animate-pulse cursor-pointer" title="Nova versão do RPA disponível para download!">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i> <span id="update-text">Atualização Disponível</span>
+            </button>
+        </div>
+
+        <!-- BOTÃO / INDICADOR DE STATUS DO RPA LOCAL -->
+        <div id="rpa-status-container" class="flex items-center gap-2">
+            <button id="btn-rpa-status" class="px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg transition flex items-center gap-2 bg-slate-800 border border-slate-700 text-slate-300">
+                <span id="rpa-indicator-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500 animate-pulse"></span>
+                <span id="rpa-status-text">A verificar RPA...</span>
+            </button>
+
+            <!-- BOTÃO CONECTAR RPA -->
+            <button onclick="conectarRPA()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-lg transition flex items-center gap-1.5 cursor-pointer" title="Forçar conexão e execução do RPA em segundo plano">
+                <i data-lucide="play-circle" class="w-4 h-4"></i> Conectar RPA
+            </button>
+        </div>
+
+        <!-- NOME DA PESSOA LOGADA (Apenas nome e avatar) -->
+        <div class="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs">
+            <div id="user-avatar" class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow">
+                U
+            </div>
+            <span id="user-display-name" class="font-semibold text-white leading-tight">Carregando...</span>
+        </div>
+
+        <!-- BOTÃO ALTERNAR VISÃO (ADMIN <-> COMUM) - Visível apenas para ADMIN -->
+        <button id="btn-toggle-vision" onclick="toggleAdminVision()" class="hidden px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-lg transition items-center gap-2 cursor-pointer">
+            <i data-lucide="eye" class="w-4 h-4"></i> <span id="vision-btn-text">Visão: Admin</span>
+        </button>
+
+        <!-- BOTÃO DE DESLOGAR (LOGOUT) -->
+        <button onclick="fazerLogout()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold shadow-lg transition flex items-center gap-2 cursor-pointer" title="Sair do Sistema">
+            <i data-lucide="log-out" class="w-4 h-4"></i> Sair
+        </button>
+
+    </div>
+</header>
+
+<div class="flex-1 flex overflow-hidden relative">
+
+    <!-- OVERLAY E MENU LATERAL -->
+    <div id="sidebar-overlay" onclick="closeSidebar()" class="absolute inset-0 bg-black/50 z-40 hidden transition-opacity"></div>
+
+    <aside id="main-sidebar" onmouseleave="closeSidebar()" class="absolute left-0 top-0 h-full w-72 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-50 transition-transform duration-300 ease-in-out -translate-x-full shadow-2xl">
+        <div class="h-16 px-4 flex items-center justify-between border-b border-slate-800">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-lg">
+                    <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm tracking-wide text-white">RPA <span class="text-blue-500">Studio</span></h1>
+                </div>
+            </div>
+            <button onclick="closeSidebar()" class="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+            <!-- Seção Conheça embutida -->
+            <button onclick="switchTab('conheca'); closeSidebar();" id="nav-conheca" class="w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-3 transition text-white bg-slate-800 cursor-pointer">
+                <i data-lucide="compass" class="w-4 h-4 text-cyan-400"></i> Conheça o Projeto
+            </button>
+            <!-- Seção Chat embutida -->
+            <button onclick="switchTab('chat'); closeSidebar();" id="nav-chat" class="w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-3 transition text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer">
+                <i data-lucide="message-square" class="w-4 h-4 text-emerald-400"></i> Chat
+            </button>
+            <!-- Criar Página chamado em Tela Cheia -->
+            <button onclick="openCriarPaginaFullscreen()" id="nav-criar" class="w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-3 transition text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer">
+                <i data-lucide="layout-template" class="w-4 h-4 text-blue-400"></i> Criar Páginas (Tela Cheia)
+            </button>
+            <!-- Baixar RPA -->
+            <button onclick="openBaixarRpaPage(); closeSidebar();" id="nav-baixar-rpa" class="w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-3 transition text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer">
+                <i data-lucide="download-cloud" class="w-4 h-4 text-amber-400"></i> Baixar App RPA
+            </button>
+        </nav>
+    </aside>
+
+    <!-- PAINEL CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
+        <div id="dynamic-tabs-container" class="flex-1 overflow-hidden relative flex flex-col">
+            
+            <!-- ABA 1: CONHEÇA O PROJETO (Incorpora conheca.html) -->
+            <div id="tab-conheca" class="tab-content active w-full h-full">
+                <iframe src="conheca.html" class="w-full h-full border-none"></iframe>
+            </div>
+
+            <!-- ABA 2: CHAT (Incorpora chat.html) -->
+            <div id="tab-chat" class="tab-content w-full h-full">
+                <iframe src="chat.html" class="w-full h-full border-none"></iframe>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    let usuarioAtual = null;
+    let isAdminReal = false;
+    let visaoSimuladaUsuario = false;
+    let rpaInstaladoLocalmente = false;
+
+    function openSidebar() {
+        const sidebar = document.getElementById('main-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar) sidebar.classList.remove('-translate-x-full');
+        if (overlay) overlay.classList.remove('hidden');
+    }
+
+    function closeSidebar() {
+        const sidebar = document.getElementById('main-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar) sidebar.classList.add('-translate-x-full');
+        if (overlay) overlay.classList.add('hidden');
+    }
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('main-sidebar');
+        if (sidebar && sidebar.classList.contains('-translate-x-full')) {
+            openSidebar();
+        } else {
+            closeSidebar();
+        }
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('bg-slate-800', 'text-white'));
+        
+        const targetTab = document.getElementById('tab-' + tabId);
+        if (targetTab) targetTab.classList.add('active');
+        
+        const targetNav = document.getElementById('nav-' + tabId);
+        if (targetNav) targetNav.classList.add('bg-slate-800', 'text-white');
+    }
+
+    function openCriarPaginaFullscreen() {
+        window.location.href = 'criar_pagina.html';
+    }
+
+    function openBaixarRpaPage() {
+        window.location.href = 'baixar_rpa.html';
+    }
+
+    async function verificarStatusRPA() {
+        const dot = document.getElementById('rpa-indicator-dot');
+        const text = document.getElementById('rpa-status-text');
+        const btn = document.getElementById('btn-rpa-status');
+        const updateContainer = document.getElementById('rpa-update-container');
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1500);
+            
+            const response = await fetch('http://localhost:5000/status', { 
+                method: 'GET', 
+                mode: 'cors',
+                signal: controller.signal 
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const dadosLocal = await response.json().catch(() => ({ versao: "1.0.0" }));
+                const versaoLocal = dadosLocal.versao || "1.0.0";
+
+                rpaInstaladoLocalmente = true;
+                if (dot) {
+                    dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+                    dot.classList.remove('animate-pulse');
+                }
+                if (text) text.innerText = "RPA Online";
+                if (btn) {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg transition flex items-center gap-2 bg-emerald-950/80 border border-emerald-800 text-emerald-300";
+                }
+
+                if (window.supabaseClient) {
+                    const { data: versaoCloudData, error } = await window.supabaseClient
+                        .from('versoes_app')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+
+                    if (!error && versaoCloudData && versaoCloudData.length > 0) {
+                        const versaoCloud = versaoCloudData[0].versao || versaoCloudData[0].numero_versao || "1.0.0";
+                        if (versaoLocal !== versaoCloud) {
+                            if (updateContainer) updateContainer.classList.remove('hidden');
+                        } else {
+                            if (updateContainer) updateContainer.classList.add('hidden');
+                        }
+                    }
+                }
+            } else {
+                throw new Error("Offline");
+            }
+        } catch (e) {
+            rpaInstaladoLocalmente = false;
+            if (updateContainer) updateContainer.classList.add('hidden');
+            if (dot) {
+                dot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+                dot.classList.remove('animate-pulse');
+            }
+            if (text) text.innerText = "Baixar RPA";
+            if (btn) {
+                btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg transition flex items-center gap-2 bg-amber-600 text-white shadow-amber-900/50 cursor-pointer";
+                btn.onclick = () => { window.location.href = 'baixar_rpa.html'; };
+            }
+        }
+    }
+
+    async function conectarRPA() {
+        const text = document.getElementById('rpa-status-text');
+        if (text) text.innerText = "A conectar...";
+
+        try {
+            await fetch('http://localhost:5000/lancar', { 
+                method: 'POST', 
+                mode: 'no-cors' 
+            }).catch(() => {});
+
+            try {
+                window.location.href = "rpa://start";
+            } catch (err) {}
+
+            setTimeout(async () => {
+                await verificarStatusRPA();
+                if (rpaInstaladoLocalmente) {
+                    alert("RPA conectado e executando com sucesso em segundo plano!");
+                } else {
+                    if (confirm("Não foi possível detetar o RPA rodando localmente. Deseja ir para a página de download?")) {
+                        window.location.href = 'baixar_rpa.html';
+                    }
+                }
+            }, 1000);
+
+        } catch (e) {
+            alert("Erro ao tentar conectar com o RPA local.");
+            verificarStatusRPA();
+        }
+    }
+
+    function carregarSessaoUsuario() {
+        const sessionData = localStorage.getItem('user_session') || 
+                            sessionStorage.getItem('user_session') || 
+                            localStorage.getItem('usuario_logado') || 
+                            sessionStorage.getItem('usuario_logado') ||
+                            localStorage.getItem('user') ||
+                            sessionStorage.getItem('user');
+
+        if (!sessionData) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        try {
+            usuarioAtual = JSON.parse(sessionData);
+            const email = usuarioAtual.usuario || usuarioAtual.email || usuarioAtual.login || "Utilizador";
+            const nomeExibicao = usuarioAtual.nome || usuarioAtual.name || email.split('@')[0];
+            const perfil = (usuarioAtual.perfil || usuarioAtual.role || 'OPERADOR').toUpperCase();
+
+            const elName = document.getElementById('user-display-name');
+            const elAvatar = document.getElementById('user-avatar');
+
+            if (elName) elName.innerText = nomeExibicao;
+            if (elAvatar) elAvatar.innerText = nomeExibicao.charAt(0).toUpperCase();
+
+            if (perfil === 'ADMIN') {
+                isAdminReal = true;
+                const btnVision = document.getElementById('btn-toggle-vision');
+                if (btnVision) {
+                    btnVision.classList.remove('hidden');
+                    btnVision.classList.add('flex');
+                }
+            }
+
+            // Restaura o estado da visão simulada se já tiver sido trocado anteriormente
+            const visionSaved = localStorage.getItem('simulated_vision');
+            if (visionSaved === 'user' && isAdminReal) {
+                toggleAdminVision();
+            }
+        } catch (e) {
+            console.error("Erro ao processar sessão:", e);
+            fazerLogout();
+        }
+    }
+
+    function toggleAdminVision() {
+        if (!isAdminReal) return;
+
+        visaoSimuladaUsuario = !visaoSimuladaUsuario;
+        const body = document.getElementById('app-body');
+        const btnVision = document.getElementById('btn-toggle-vision');
+        const btnText = document.getElementById('vision-btn-text');
+
+        if (visaoSimuladaUsuario) {
+            localStorage.setItem('simulated_vision', 'user');
+            body.classList.remove('is-admin');
+            body.classList.add('is-user');
+            if (btnVision) {
+                btnVision.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                btnVision.classList.add('bg-amber-600', 'hover:bg-amber-500');
+            }
+            if (btnText) btnText.innerText = "Visão: Usuário";
+        } else {
+            localStorage.setItem('simulated_vision', 'admin');
+            body.classList.remove('is-user');
+            body.classList.add('is-admin');
+            if (btnVision) {
+                btnVision.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btnVision.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+            }
+            if (btnText) btnText.innerText = "Visão: Admin";
+        }
+    }
+
+    function fazerLogout() {
+        localStorage.removeItem('user_session');
+        sessionStorage.removeItem('user_session');
+        localStorage.removeItem('usuario_logado');
+        sessionStorage.removeItem('usuario_logado');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
+        localStorage.removeItem('simulated_vision');
+        window.location.href = 'login.html';
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        carregarSessaoUsuario();
+        verificarStatusRPA();
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    });
+</script>
+
+<script src="appScripts.js"></script>
+</body>
+</html>

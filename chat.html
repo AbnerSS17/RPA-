@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat com RPA - Assistente Inteligente</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Cliente Supabase local opcional -->
+  <script src="supabaseClient.js" onerror="console.warn('supabaseClient.js opcional.')"></script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 4px; }
+    
+    .space-porthole {
+      box-shadow: 0 0 35px rgba(6, 182, 212, 0.35), inset 0 0 15px rgba(6, 182, 212, 0.2);
+    }
+    
+    .porthole-processing {
+      box-shadow: 0 0 60px rgba(6, 182, 212, 0.8), inset 0 0 25px rgba(6, 182, 212, 0.5);
+      animation: pulse-glow 1.5s infinite alternate;
+    }
+
+    @keyframes pulse-glow {
+      from { transform: scale(1); filter: brightness(1); }
+      to { transform: scale(1.03); filter: brightness(1.25); }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex flex-col justify-between">
+
+  <!-- Header Superior -->
+  <header class="w-full px-6 py-4 flex items-center justify-between border-b border-slate-900 bg-slate-950/90 backdrop-blur sticky top-0 z-20">
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <img src="https://mtipyhwprnjniexgcsrs.supabase.co/storage/v1/object/public/assets-publicos/rpa_avatar.jpg" alt="RPA Avatar" class="w-10 h-10 rounded-full object-cover border-2 border-cyan-500/50 shadow-md shadow-cyan-500/20" onerror="this.onerror=null; this.src='rpa_avatar.jpg';">
+        <span id="header-dot-status" class="absolute bottom-0 right-0 w-3 h-3 bg-rose-500 border-2 border-slate-950 rounded-full"></span>
+      </div>
+      <div>
+        <h1 class="font-bold text-sm text-slate-200 flex items-center gap-2">
+          Robô RPA <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono">Google Gemini 1.5 Flash</span>
+        </h1>
+        <p class="text-[11px] text-slate-400">Projetos UNIVESP, Automação & Suporte</p>
+      </div>
+    </div>
+
+    <div id="connection-status" class="flex items-center gap-2 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/60 px-3 py-1.5 rounded-lg font-mono">
+      <i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> A verificar Supabase...
+    </div>
+  </header>
+
+  <!-- Container Principal -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-6 flex flex-col justify-between overflow-hidden">
+    
+    <div id="chat-container" class="flex-1 overflow-y-auto space-y-6 pr-2">
+      
+      <!-- JANELA DE NAVE ESPACIAL (Imagem Circular com Hero) -->
+      <div id="welcome-screen" class="my-auto py-6 flex flex-col items-center text-center space-y-5 transition-all duration-300">
+        <div id="porthole-wrapper" class="relative p-1.5 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-600 to-emerald-400 space-porthole transition-all duration-500">
+          <div class="w-44 h-44 md:w-56 md:h-56 rounded-full overflow-hidden border-4 border-slate-950 bg-slate-900">
+            <img id="rpa-porthole-img" src="https://mtipyhwprnjniexgcsrs.supabase.co/storage/v1/object/public/assets-publicos/rpa_hero.jpg" alt="Janela Espacial Robô RPA" class="w-full h-full object-cover transition duration-500" onerror="this.onerror=null; this.src='rpa_hero.jpg';">
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <h2 class="text-2xl font-bold text-slate-100">Central de Comando do Robô RPA</h2>
+          <p id="rpa-status-text" class="text-xs md:text-sm text-slate-400 max-w-md">Pergunte sobre as páginas do projeto, solicite automações low-code ou converse com o robô!</p>
+        </div>
+      </div>
+
+      <div id="message-list" class="space-y-6 hidden"></div>
+    </div>
+
+    <!-- Caixa de Entrada com Bloqueio Estrito de Segurança -->
+    <div class="mt-4 pt-2">
+      <div id="input-container" class="bg-slate-900 border border-slate-800 rounded-2xl p-2.5 shadow-2xl transition-all">
+        <div class="flex items-center gap-2">
+          <textarea 
+            id="chat-input" 
+            rows="1" 
+            placeholder="Aguardando validação da chave do Supabase..." 
+            disabled
+            onkeydown="handleKeyDown(event)"
+            class="flex-1 bg-transparent border-none focus:outline-none text-xs sm:text-sm text-slate-100 resize-none max-h-32 py-2 px-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          ></textarea>
+          
+          <button 
+            onclick="sendGeminiMessage()" 
+            id="send-btn"
+            disabled
+            class="p-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white rounded-xl shadow-md transition flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+      <p id="lock-warning" class="text-[10px] text-center text-slate-500 mt-2">
+        Sistema verificado via Supabase e projectContext.json[cite: 17].
+      </p>
+    </div>
+
+  </main>
+
+  <script>
+    let projectContextData = "";
+    let secureApiKey = "";
+
+    window.onload = async function() {
+      if (window.lucide) window.lucide.createIcons();
+      await verifyFullSystemStatusStrict();
+    };
+
+    async function verifyFullSystemStatusStrict() {
+      const statusBadge = document.getElementById('connection-status');
+      const headerDot = document.getElementById('header-dot-status');
+      const inputField = document.getElementById('chat-input');
+      const sendBtn = document.getElementById('send-btn');
+      const lockWarning = document.getElementById('lock-warning');
+
+      let supabaseOk = false;
+      let keyFound = "";
+
+      // 1. Validar Supabase e Chave na tabela app_config[cite: 17]
+      try {
+        const client = window.supabaseClient || window.supabase;
+        if (client) {
+          const { data, error } = await client
+            .from('app_config')
+            .select('api_value')
+            .eq('key_name', 'gemini_api_key')
+            .single();
+
+          if (!error && data && data.api_value) {
+            keyFound = data.api_value;
+            supabaseOk = true;
+          }
+        }
+      } catch (err) {
+        console.warn("Erro ao buscar Supabase:", err);
+      }
+
+      // 2. Carregar o projectContext.json[cite: 17]
+      try {
+        const res = await fetch('projectContext.json');
+        if (res.ok) {
+          const data = await res.json();
+          projectContextData = JSON.stringify(data);
+        }
+      } catch (err) {
+        console.warn("Erro ao carregar projectContext.json:", err);
+      }
+
+      // 3. Avaliação Estrita: Apenas fica online (verde) se houver Supabase + Chave + Contexto
+      if (supabaseOk && keyFound && projectContextData) {
+        secureApiKey = keyFound;
+        
+        // Status Verde (Online)
+        statusBadge.className = "flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-3 py-1.5 rounded-lg font-mono";
+        statusBadge.innerHTML = `<i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Online • Supabase & Gemini Conectados`;
+        headerDot.className = "absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-950 rounded-full animate-pulse";
+        
+        // Desbloquear chat
+        inputField.disabled = false;
+        sendBtn.disabled = false;
+        inputField.placeholder = "Digite sua dúvida ou desabafo para o RPA...";
+        lockWarning.textContent = "Pressione Enter para enviar, Shift + Enter para quebrar linha.";
+      } else {
+        // Status Vermelho (Offline estrito)
+        secureApiKey = "";
+        
+        statusBadge.className = "flex items-center gap-2 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/60 px-3 py-1.5 rounded-lg font-mono";
+        statusBadge.innerHTML = `<i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Offline • Erro de Conexão ou Chave Ausente`;
+        headerDot.className = "absolute bottom-0 right-0 w-3 h-3 bg-rose-500 border-2 border-slate-950 rounded-full";
+        
+        // Bloquear chat
+        inputField.disabled = true;
+        sendBtn.disabled = true;
+        inputField.placeholder = "⚠️ Sistema offline. Conectividade com Supabase ou Chave ausente.";
+        lockWarning.innerHTML = "<span class='text-rose-400 font-bold'>Erro: O robô está offline porque as credenciais do Supabase/Gemini não foram validadas.</span>";
+      }
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendGeminiMessage();
+      }
+    }
+
+    async function sendGeminiMessage() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text || !secureApiKey) return;
+
+      document.getElementById('welcome-screen').classList.add('hidden');
+      const messageList = document.getElementById('message-list');
+      messageList.classList.remove('hidden');
+
+      const userDiv = document.createElement('div');
+      userDiv.className = 'flex items-start gap-3 justify-end';
+      userDiv.innerHTML = `<div class="bg-blue-600 text-white rounded-2xl px-4 py-3 max-w-xl text-xs sm:text-sm leading-relaxed shadow-sm"><p>${escapeHtml(text)}</p></div>`;
+      messageList.appendChild(userDiv);
+      input.value = '';
+      scrollToBottom();
+
+      setLoadingState(true);
+
+      const typingId = 'typing-' + Date.now();
+      const typingDiv = document.createElement('div');
+      typingDiv.id = typingId;
+      typingDiv.className = 'flex items-start gap-3';
+      typingDiv.innerHTML = `
+        <img src="https://mtipyhwprnjniexgcsrs.supabase.co/storage/v1/object/public/assets-publicos/rpa_avatar.jpg" class="w-8 h-8 rounded-full object-cover border border-cyan-500/40 shrink-0 mt-1" onerror="this.onerror=null; this.src='rpa_avatar.jpg';">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-cyan-400 italic flex items-center gap-2">
+          <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> O robô RPA está organizando a resposta...
+        </div>
+      `;
+      messageList.appendChild(typingDiv);
+      scrollToBottom();
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        const reply = await callGoogleGeminiAPI(secureApiKey, text);
+        document.getElementById(typingId).remove();
+        appendBotMessage(reply);
+      } catch (err) {
+        document.getElementById(typingId).remove();
+        appendBotMessage("⚠️ Ocorreu um erro ao comunicar com a IA do Gemini: " + err.message);
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    function setLoadingState(isLoading) {
+      const input = document.getElementById('chat-input');
+      const sendBtn = document.getElementById('send-btn');
+      const warning = document.getElementById('lock-warning');
+      const portholeWrapper = document.getElementById('porthole-wrapper');
+
+      if (isLoading) {
+        input.disabled = true;
+        sendBtn.disabled = true;
+        input.placeholder = "Aguarde, o robô RPA está gerando sua resposta...";
+        warning.innerHTML = "<span class='text-cyan-400 font-bold animate-pulse'>🔒 A IA está organizando a resposta... Campo bloqueado e janela espacial em foco.</span>";
+        if (portholeWrapper) portholeWrapper.classList.add('porthole-processing');
+      } else {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.placeholder = "Digite sua dúvida ou desabafo para o RPA...";
+        warning.textContent = "Pressione Enter para enviar, Shift + Enter para quebrar linha.";
+        if (portholeWrapper) portholeWrapper.classList.remove('porthole-processing');
+        input.focus();
+      }
+    }
+
+    async function callGoogleGeminiAPI(apiKey, userPrompt) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const systemPrompt = `Você é o robô RPA, assistente simpático, inteligente e acolhedor do Low-Code RPA Studio (Projeto Integrador UNIVESP). Dados oficiais do projeto: ${projectContextData}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            { parts: [{ text: systemPrompt }, { text: userPrompt }] }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error.message);
+      return data.candidates[0].content.parts[0].text.replace(/\n/g, '<br>');
+    }
+
+    function appendBotMessage(htmlContent) {
+      const messageList = document.getElementById('message-list');
+      const botDiv = document.createElement('div');
+      botDiv.className = 'flex items-start gap-3';
+      botDiv.innerHTML = `
+        <img src="https://mtipyhwprnjniexgcsrs.supabase.co/storage/v1/object/public/assets-publicos/rpa_avatar.jpg" alt="RPA" class="w-8 h-8 rounded-full object-cover border border-cyan-500/40 shrink-0 mt-1 shadow" onerror="this.onerror=null; this.src='rpa_avatar.jpg';">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 max-w-2xl text-xs sm:text-sm text-slate-200 leading-relaxed space-y-2 shadow-sm">
+          <p>${htmlContent}</p>
+        </div>
+      `;
+      messageList.appendChild(botDiv);
+      scrollToBottom();
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function scrollToBottom() {
+      const container = document.getElementById('chat-container');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+  </script>
+</body>
+</html>

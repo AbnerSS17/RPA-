@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticação — RPA Studio</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Supabase JS Client & bcryptjs para Hash e Validação de Senha -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+    <script src="supabaseClient.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background-color: #020617; color: #e2e8f0; min-height: 100vh; }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 4px; }
+
+        .auth-card { display: none; }
+        .auth-card.active { display: block; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- CONTAINER CENTRAL -->
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        
+        <!-- ELEMENTO DECORATIVO DE FUNDO -->
+        <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <!-- CABEÇALHO DO CARD -->
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg mb-3">
+                <i data-lucide="lock" class="w-6 h-6"></i>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-white">RPA <span class="text-blue-500">Assistente</span></h1>
+            <p id="card-subtitle" class="text-xs text-slate-400 mt-1">Entre com as suas credenciais para continuar</p>
+        </div>
+
+        <!-- MENSAGENS DE ALERTA GERAL -->
+        <div id="alert-box" class="hidden mb-4 p-3 rounded-lg text-xs font-medium border transition-all"></div>
+
+        <!-- ================================================================= -->
+        <!-- FORMULÁRIO 1: LOGIN -->
+        <!-- ================================================================= -->
+        <div id="view-login" class="auth-card active space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail / Login</label>
+                <div class="relative">
+                    <input type="email" id="login-email" placeholder="usuario@rpa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 pl-9 text-sm text-white focus:outline-none focus:border-blue-500 transition">
+                    <i data-lucide="mail" class="w-4 h-4 text-slate-500 absolute left-3 top-3"></i>
+                </div>
+                <p id="warn-login-email" class="text-[11px] text-amber-400 mt-1 hidden">O e-mail deve pertencer ao domínio @rpa.com.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Palavra-passe</label>
+                <div class="relative">
+                    <input type="password" id="login-senha" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 pl-9 pr-9 text-sm text-white focus:outline-none focus:border-blue-500 transition">
+                    <i data-lucide="key-round" class="w-4 h-4 text-slate-500 absolute left-3 top-3"></i>
+                    <button type="button" onclick="togglePasswordVisibility('login-senha', this)" class="absolute right-3 top-3 text-slate-500 hover:text-white cursor-pointer">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs">
+                <label class="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-slate-200">
+                    <input type="checkbox" id="login-lembrar" class="rounded bg-slate-950 border-slate-800 text-blue-600 focus:ring-0">
+                    Lembrar-me neste computador
+                </label>
+                <button onclick="switchView('esqueci')" class="text-blue-400 hover:underline">Esqueceu a senha?</button>
+            </div>
+
+            <button onclick="fazerLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer">
+                <i data-lucide="log-in" class="w-4 h-4"></i> Entrar no Sistema
+            </button>
+
+            <div class="pt-4 border-t border-slate-800 text-center">
+                <p class="text-xs text-slate-400">Ainda não tem conta? <button onclick="switchView('cadastro')" class="text-blue-400 font-semibold hover:underline">Criar novo usuário</button></p>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- FORMULÁRIO 2: CRIAR NOVO USUÁRIO -->
+        <!-- ================================================================= -->
+        <div id="view-cadastro" class="auth-card space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Nome Completo</label>
+                <input type="text" id="cad-nome" placeholder="Seu Nome Completo" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <p id="warn-cad-nome" class="text-[11px] text-amber-400 mt-1 hidden">Informe o nome completo.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail corporativo (@rpa.com)</label>
+                <input type="email" id="cad-email" placeholder="nome@rpa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <p id="warn-cad-email" class="text-[11px] text-amber-400 mt-1 hidden">O e-mail precisa terminar com @rpa.com.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Confirme o E-mail</label>
+                <input type="email" id="cad-email-confirma" placeholder="Confirme seu @rpa.com" disabled class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white opacity-50 cursor-not-allowed focus:outline-none focus:border-blue-500">
+                <p id="warn-cad-email-conf" class="text-[11px] text-amber-400 mt-1 hidden">Os e-mails digitados não coincidem.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Nova Senha Segura</label>
+                <p class="text-[10px] text-slate-400 mb-1">Mín. 8 caracteres, contendo letra maiúscula, minúscula e número.</p>
+                <div class="relative">
+                    <input type="password" id="cad-senha1" placeholder="Palavra-passe" disabled class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 pr-9 text-sm text-white opacity-50 cursor-not-allowed focus:outline-none focus:border-blue-500">
+                    <button type="button" onclick="togglePasswordVisibility('cad-senha1', this)" class="absolute right-3 top-2.5 text-slate-500 hover:text-white cursor-pointer">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <p id="warn-cad-senha1" class="text-[11px] text-amber-400 mt-1 hidden">A senha deve ter min. 8 caracteres, 1 maiúscula, 1 minúscula e 1 número.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Confirme a Senha</label>
+                <div class="relative">
+                    <input type="password" id="cad-senha2" placeholder="Confirme a palavra-passe" disabled class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 pr-9 text-sm text-white opacity-50 cursor-not-allowed focus:outline-none focus:border-blue-500">
+                    <button type="button" onclick="togglePasswordVisibility('cad-senha2', this)" class="absolute right-3 top-2.5 text-slate-500 hover:text-white cursor-pointer">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <p id="warn-cad-senha2" class="text-[11px] text-amber-400 mt-1 hidden">As senhas não coincidem.</p>
+            </div>
+
+            <button id="btn-cadastrar" onclick="cadastrarUsuario()" disabled class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg text-sm shadow-lg transition flex items-center justify-center gap-2 opacity-50 cursor-not-allowed pointer-events-none">
+                <i data-lucide="user-plus" class="w-4 h-4"></i> Cadastrar Usuário
+            </button>
+
+            <div class="pt-2 text-center">
+                <button onclick="switchView('login')" class="text-xs text-slate-400 hover:text-white underline cursor-pointer">Voltar para o Login</button>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- FORMULÁRIO 3: TROCAR DE SENHA -->
+        <!-- ================================================================= -->
+        <div id="view-esqueci" class="auth-card space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail Cadastrado (@rpa.com)</label>
+                <input type="email" id="troca-email" placeholder="usuario@rpa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <p id="warn-troca-email" class="text-[11px] text-amber-400 mt-1 hidden">Informe um e-mail válido com terminação @rpa.com.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Nova Senha (Repita 2x)</label>
+                <div class="space-y-2">
+                    <div class="relative">
+                        <input type="password" id="troca-senha1" placeholder="Nova palavra-passe" disabled class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 pr-9 text-sm text-white opacity-50 cursor-not-allowed focus:outline-none focus:border-blue-500">
+                        <button type="button" onclick="togglePasswordVisibility('troca-senha1', this)" class="absolute right-3 top-2.5 text-slate-500 hover:text-white cursor-pointer">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <p id="warn-troca-senha1" class="text-[11px] text-amber-400 mt-1 hidden">Mín. 8 caracteres, 1 letra maiúscula, 1 minúscula e 1 número.</p>
+
+                    <div class="relative">
+                        <input type="password" id="troca-senha2" placeholder="Confirme a nova palavra-passe" disabled class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 pr-9 text-sm text-white opacity-50 cursor-not-allowed focus:outline-none focus:border-blue-500">
+                        <button type="button" onclick="togglePasswordVisibility('troca-senha2', this)" class="absolute right-3 top-2.5 text-slate-500 hover:text-white cursor-pointer">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <p id="warn-troca-senha2" class="text-[11px] text-amber-400 mt-1 hidden">As senhas novas não coincidem.</p>
+                </div>
+            </div>
+
+            <button id="btn-trocar" onclick="trocarSenha()" disabled class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 rounded-lg text-sm shadow-lg transition flex items-center justify-center gap-2 opacity-50 cursor-not-allowed pointer-events-none">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Redefinir Senha
+            </button>
+
+            <div class="pt-2 text-center">
+                <button onclick="switchView('login')" class="text-xs text-slate-400 hover:text-white underline cursor-pointer">Voltar para o Login</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- REGRAS DE LÓGICA E INTEGRAÇÃO SUPABASE -->
+    <script>
+        // Configuração e Inicialização Correta do Supabase
+        const SUPABASE_URL = "https://mtipyhwprnjniexgcsrs.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_vfW6skkVpWjFNA-DOpltVA_O3wQ2Y8d";
+
+        let supabaseClient = window.supabaseClient;
+        if (!supabaseClient && window.supabase && typeof window.supabase.createClient === 'function') {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+        if (!supabaseClient && window.supabase) {
+            supabaseClient = window.supabase;
+        }
+
+        function switchView(viewName) {
+            hideAlert();
+            document.querySelectorAll('.auth-card').forEach(el => el.classList.remove('active'));
+            const subtitle = document.getElementById('card-subtitle');
+
+            if (viewName === 'login') {
+                document.getElementById('view-login').classList.add('active');
+                subtitle.innerText = "Entre com as suas credenciais para continuar";
+            } else if (viewName === 'cadastro') {
+                document.getElementById('view-cadastro').classList.add('active');
+                subtitle.innerText = "Preencha as informações para criar sua conta";
+                atualizarEstadosCadastro();
+            } else if (viewName === 'esqueci') {
+                document.getElementById('view-esqueci').classList.add('active');
+                subtitle.innerText = "Informe seu e-mail e a nova palavra-passe";
+                atualizarEstadosTroca();
+            }
+        }
+
+        function togglePasswordVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function showAlert(msg, isSuccess = false) {
+            const box = document.getElementById('alert-box');
+            box.innerText = msg;
+            box.className = `mb-4 p-3 rounded-lg text-xs font-medium border ${
+                isSuccess 
+                ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300' 
+                : 'bg-rose-950/60 border-rose-800 text-rose-300'
+            }`;
+            box.classList.remove('hidden');
+        }
+
+        function hideAlert() {
+            document.getElementById('alert-box').classList.add('hidden');
+        }
+
+        function validarEmailRPA(email) {
+            const regex = /^[a-zA-Z0-9._%+-]+@rpa\.com$/i;
+            return regex.test(email.trim());
+        }
+
+        function validarSenhaSegura(senha) {
+            const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+            return regex.test(senha);
+        }
+
+        function setWarning(elementId, show) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                if (show) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            }
+        }
+
+        function atualizarEstadosCadastro() {
+            const nome = document.getElementById('cad-nome').value.trim();
+            const email = document.getElementById('cad-email').value.trim();
+            const emailConf = document.getElementById('cad-email-confirma').value.trim();
+            const senha1 = document.getElementById('cad-senha1').value;
+            const senha2 = document.getElementById('cad-senha2').value;
+            const btnCadastrar = document.getElementById('btn-cadastrar');
+
+            const nomeValido = nome.length > 0;
+            const emailValido = validarEmailRPA(email);
+            const emailsIguais = emailValido && (email.toLowerCase() === emailConf.toLowerCase());
+            const senha1Valida = validarSenhaSegura(senha1);
+            const senhasIguais = senha1Valida && (senha1 === senha2);
+
+            setWarning('warn-cad-nome', nome.length > 0 && !nomeValido);
+            setWarning('warn-cad-email', email.length > 0 && !emailValido);
+            setWarning('warn-cad-email-conf', emailConf.length > 0 && !emailsIguais);
+            setWarning('warn-cad-senha1', senha1.length > 0 && !senha1Valida);
+            setWarning('warn-cad-senha2', senha2.length > 0 && !senhasIguais);
+
+            const elConf = document.getElementById('cad-email-confirma');
+            if (emailValido) {
+                elConf.removeAttribute('disabled');
+                elConf.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                elConf.setAttribute('disabled', 'true');
+                elConf.classList.add('opacity-50', 'cursor-not-allowed');
+                if (elConf.value) { elConf.value = ''; setWarning('warn-cad-email-conf', false); }
+            }
+
+            const elSenha1 = document.getElementById('cad-senha1');
+            if (emailsIguais) {
+                elSenha1.removeAttribute('disabled');
+                elSenha1.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                elSenha1.setAttribute('disabled', 'true');
+                elSenha1.classList.add('opacity-50', 'cursor-not-allowed');
+                if (elSenha1.value) { elSenha1.value = ''; setWarning('warn-cad-senha1', false); }
+            }
+
+            const elSenha2 = document.getElementById('cad-senha2');
+            if (senha1Valida) {
+                elSenha2.removeAttribute('disabled');
+                elSenha2.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                elSenha2.setAttribute('disabled', 'true');
+                elSenha2.classList.add('opacity-50', 'cursor-not-allowed');
+                if (elSenha2.value) { elSenha2.value = ''; setWarning('warn-cad-senha2', false); }
+            }
+
+            if (nomeValido && emailsIguais && senhasIguais) {
+                btnCadastrar.removeAttribute('disabled');
+                btnCadastrar.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            } else {
+                btnCadastrar.setAttribute('disabled', 'true');
+                btnCadastrar.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            }
+        }
+
+        function atualizarEstadosTroca() {
+            const email = document.getElementById('troca-email').value.trim();
+            const senha1 = document.getElementById('troca-senha1').value;
+            const senha2 = document.getElementById('troca-senha2').value;
+            const btnTrocar = document.getElementById('btn-trocar');
+
+            const emailValido = validarEmailRPA(email);
+            const senha1Valida = validarSenhaSegura(senha1);
+            const senhasIguais = senha1Valida && (senha1 === senha2);
+
+            setWarning('warn-troca-email', email.length > 0 && !emailValido);
+            setWarning('warn-troca-senha1', senha1.length > 0 && !senha1Valida);
+            setWarning('warn-troca-senha2', senha2.length > 0 && !senhasIguais);
+
+            const elTrocSenha1 = document.getElementById('troca-senha1');
+            if (emailValido) {
+                elTrocSenha1.removeAttribute('disabled');
+                elTrocSenha1.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                elTrocSenha1.setAttribute('disabled', 'true');
+                elTrocSenha1.classList.add('opacity-50', 'cursor-not-allowed');
+                if (elTrocSenha1.value) { elTrocSenha1.value = ''; setWarning('warn-troca-senha1', false); }
+            }
+
+            const elTrocSenha2 = document.getElementById('troca-senha2');
+            if (senha1Valida) {
+                elTrocSenha2.removeAttribute('disabled');
+                elTrocSenha2.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                elTrocSenha2.setAttribute('disabled', 'true');
+                elTrocSenha2.classList.add('opacity-50', 'cursor-not-allowed');
+                if (elTrocSenha2.value) { elTrocSenha2.value = ''; setWarning('warn-troca-senha2', false); }
+            }
+
+            if (emailValido && senhasIguais) {
+                btnTrocar.removeAttribute('disabled');
+                btnTrocar.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            } else {
+                btnTrocar.setAttribute('disabled', 'true');
+                btnTrocar.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+            }
+        }
+
+        // 1. FAZER LOGIN
+        async function fazerLogin() {
+            hideAlert();
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const senha = document.getElementById('login-senha').value.trim();
+            const lembrar = document.getElementById('login-lembrar').checked;
+
+            if (!email || !senha) {
+                showAlert("Por favor, preencha o e-mail e a senha.");
+                return;
+            }
+
+            if (!validarEmailRPA(email)) {
+                showAlert("Apenas e-mails corporativos finalizados em @rpa.com são permitidos.");
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('solucao_usuarios')
+                    .select('*')
+                    .eq('login', email);
+
+                if (error || !data || data.length === 0) {
+                    showAlert("E-mail ou palavra-passe incorretos.");
+                    return;
+                }
+
+                const usuarioDb = data[0];
+                const senhaHashDb = usuarioDb.senha_hash;
+
+                const senhaValida = dcodeIO.bcrypt.compareSync(senha, senhaHashDb);
+
+                if (senhaValida) {
+                    showAlert("Autenticado com sucesso! Redirecionando...", true);
+                    
+                    // Salva a sessão ativa
+                    localStorage.setItem('user_session', JSON.stringify({ usuario: email, perfil: usuarioDb.perfil || 'OPERADOR' }));
+
+                    // Se "Lembrar-me" estiver marcado, salva as credenciais para preenchimento futuro
+                    if (lembrar) {
+                        localStorage.setItem('rpa_lembrar', 'true');
+                        localStorage.setItem('rpa_saved_email', email);
+                        localStorage.setItem('rpa_saved_senha', senha);
+                    } else {
+                        localStorage.removeItem('rpa_lembrar');
+                        localStorage.removeItem('rpa_saved_email');
+                        localStorage.removeItem('rpa_saved_senha');
+                    }
+
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    showAlert("E-mail ou palavra-passe incorretos.");
+                }
+            } catch (err) {
+                showAlert("Erro ao comunicar com a base de dados: " + err.message);
+            }
+        }
+
+        // 2. CRIAR NOVO USUÁRIO
+        async function cadastrarUsuario() {
+            hideAlert();
+            const nome = document.getElementById('cad-nome').value.trim();
+            const email = document.getElementById('cad-email').value.trim().toLowerCase();
+            const emailConfirma = document.getElementById('cad-email-confirma').value.trim().toLowerCase();
+            const senha1 = document.getElementById('cad-senha1').value.trim();
+            const senha2 = document.getElementById('cad-senha2').value.trim();
+
+            if (!nome || !email || !emailConfirma || !senha1 || !senha2) {
+                showAlert("Todos os campos devem ser preenchidos.");
+                return;
+            }
+
+            if (!validarEmailRPA(email)) {
+                showAlert("O e-mail precisa ter o domínio @rpa.com.");
+                return;
+            }
+
+            if (email !== emailConfirma) {
+                showAlert("Os e-mails digitados não conferem.");
+                return;
+            }
+
+            if (senha1 !== senha2) {
+                showAlert("As senhas digitadas não conferem.");
+                return;
+            }
+
+            if (!validarSenhaSegura(senha1)) {
+                showAlert("A senha deve ter pelo menos 8 caracteres, contendo 1 letra maiúscula, 1 minúscula e 1 número.");
+                return;
+            }
+
+            try {
+                const { data: usuarioExistente } = await supabaseClient
+                    .from('solucao_usuarios')
+                    .select('id')
+                    .eq('login', email);
+
+                if (usuarioExistente && usuarioExistente.length > 0) {
+                    showAlert("Este e-mail já está cadastrado no sistema.");
+                    return;
+                }
+
+                const salt = dcodeIO.bcrypt.genSaltSync(10);
+                const senhaHash = dcodeIO.bcrypt.hashSync(senha1, salt);
+
+                const { error: insertError } = await supabaseClient
+                    .from('solucao_usuarios')
+                    .insert([{
+                        login: email,
+                        senha_hash: senhaHash,
+                        nome: nome,
+                        perfil: 'OPERADOR'
+                    }]);
+
+                if (insertError) {
+                    showAlert("Erro ao criar o usuário: " + insertError.message);
+                } else {
+                    showAlert("Usuário criado com sucesso! Faça login para continuar.", true);
+                    setTimeout(() => switchView('login'), 1500);
+                }
+            } catch (err) {
+                showAlert("Erro no processamento: " + err.message);
+            }
+        }
+
+        // 3. TROCAR DE SENHA
+        async function trocarSenha() {
+            hideAlert();
+            const email = document.getElementById('troca-email').value.trim().toLowerCase();
+            const senha1 = document.getElementById('troca-senha1').value.trim();
+            const senha2 = document.getElementById('troca-senha2').value.trim();
+
+            if (!email || !senha1 || !senha2) {
+                showAlert("Preencha todos os campos para alterar a senha.");
+                return;
+            }
+
+            if (!validarEmailRPA(email)) {
+                showAlert("Insira um e-mail válido com domínio @rpa.com.");
+                return;
+            }
+
+            if (senha1 !== senha2) {
+                showAlert("As duas senhas informadas não coincidem.");
+                return;
+            }
+
+            if (!validarSenhaSegura(senha1)) {
+                showAlert("A nova senha deve possuir no mínimo 8 caracteres, letra maiúscula, minúscula e número.");
+                return;
+            }
+
+            try {
+                const { data: usuarioExistente } = await supabaseClient
+                    .from('solucao_usuarios')
+                    .select('id')
+                    .eq('login', email);
+
+                if (!usuarioExistente || usuarioExistente.length === 0) {
+                    showAlert("E-mail não encontrado no sistema.");
+                    return;
+                }
+
+                const salt = dcodeIO.bcrypt.genSaltSync(10);
+                const novaSenhaHash = dcodeIO.bcrypt.hashSync(senha1, salt);
+
+                const { error: updateError } = await supabaseClient
+                    .from('solucao_usuarios')
+                    .update({ senha_hash: novaSenhaHash })
+                    .eq('login', email);
+
+                if (updateError) {
+                    showAlert("Erro ao redefinir a senha: " + updateError.message);
+                } else {
+                    showAlert("Senha alterada com sucesso! Você já pode entrar.", true);
+                    setTimeout(() => switchView('login'), 1500);
+                }
+            } catch (err) {
+                showAlert("Erro ao processar alteração: " + err.message);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+
+            // Restaura credenciais lembradas anteriormente se a opção estiver ativa
+            const savedLembrar = localStorage.getItem('rpa_lembrar');
+            if (savedLembrar === 'true') {
+                const savedEmail = localStorage.getItem('rpa_saved_email');
+                const savedSenha = localStorage.getItem('rpa_saved_senha');
+                if (savedEmail) document.getElementById('login-email').value = savedEmail;
+                if (savedSenha) document.getElementById('login-senha').value = savedSenha;
+                const lembrarCheckbox = document.getElementById('login-lembrar');
+                if (lembrarCheckbox) lembrarCheckbox.checked = true;
+            }
+
+            // Validação em tempo real (Login)
+            const loginEmailEl = document.getElementById('login-email');
+            if (loginEmailEl) {
+                loginEmailEl.addEventListener('input', () => {
+                    const val = loginEmailEl.value.trim();
+                    setWarning('warn-login-email', val.length > 0 && !validarEmailRPA(val));
+                });
+            }
+
+            // Validação em tempo real (Cadastro)
+            ['cad-nome', 'cad-email', 'cad-email-confirma', 'cad-senha1', 'cad-senha2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', atualizarEstadosCadastro);
+            });
+
+            // Validação em tempo real (Troca de Senha)
+            ['troca-email', 'troca-senha1', 'troca-senha2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', atualizarEstadosTroca);
+            });
+
+            atualizarEstadosCadastro();
+            atualizarEstadosTroca();
+        });
+    </script>
+</body>
+</html>

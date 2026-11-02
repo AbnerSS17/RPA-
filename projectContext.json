@@ -1,0 +1,41 @@
+{
+  "project_info": {
+    "name": "Low-Code RPA Studio",
+    "version": "1.0.0",
+    "description": "Plataforma desenvolvida para o Projeto Integrador da UNIVESP, com o propósito de criar páginas de automação low-code para realizar tarefas automatizadas de maneira simples e sem precisar saber programação.",
+    "institution": "UNIVESP - Universidade Virtual do Estado de São Paulo"
+  },
+  "rpa_bot": {
+    "name": "RPA",
+    "role": "Assistente inteligente, especialista em automação e também um amigo para conversar e desabafar.",
+    "status": "online"
+  },
+  "team_members": [
+    {
+      "name": "Nome Completo do Integrante 1",
+      "role": "Desenvolvedor / Integrante",
+      "linkedin": "https://www.linkedin.com/in/perfil-integrante-1",
+      "photo": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "name": "Nome Completo do Integrante 2",
+      "role": "Desenvolvedor / Integrante",
+      "linkedin": "https://www.linkedin.com/in/perfil-integrante-2",
+      "photo": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      "name": "Nome Completo do Integrante 3",
+      "role": "Desenvolvedor / Integrante",
+      "linkedin": "https://www.linkedin.com/in/perfil-integrante-3",
+      "photo": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&auto=format&fit=crop&q=80"
+    }
+  ],
+  "max_team_capacity": 8,
+  "architecture": [
+    "index.html",
+    "supabaseClient.js",
+    "appEngine.js",
+    "chartStudio.js",
+    "projectContext.json"
+  ]
+}
