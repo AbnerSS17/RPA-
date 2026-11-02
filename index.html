@@ -58,50 +58,150 @@
 
     <!-- Formulário de Login -->
     <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+      
+      <!-- CAMPO EMAIL -->
       <div class="space-y-1">
         <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">E-mail / Utilizador</label>
         <div class="relative">
           <i data-lucide="mail" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
           <input 
-            type="text" 
+            type="email" 
             id="login-email" 
             required 
+            oninput="validarEmailInput()"
             placeholder="exemplo@rpa.com" 
             class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 transition"
           >
         </div>
+        <p id="email-error-text" class="text-[10px] text-rose-400 hidden pt-0.5">Insira um formato de e-mail válido (ex: nome@dominio.com).</p>
       </div>
 
+      <!-- CAMPO PALAVRA-PASSE (MÁSCARA E VISUALIZAR) -->
       <div class="space-y-1">
-        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Palavra-passe</label>
+        <div class="flex items-center justify-between">
+          <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Palavra-passe</label>
+          <button type="button" onclick="abrirModalEsqueciSenha()" class="text-[10px] font-semibold text-brand-400 hover:text-brand-300 hover:underline cursor-pointer">
+            Esqueci minha senha?
+          </button>
+        </div>
         <div class="relative">
           <i data-lucide="lock" class="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
           <input 
             type="password" 
             id="login-password" 
             required 
+            disabled
+            oninput="validarSenhaInput()"
             placeholder="••••••••" 
-            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 transition"
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
+          <button 
+            type="button" 
+            onclick="togglePasswordVisibility('login-password', 'eye-icon-login')" 
+            class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none cursor-pointer"
+            title="Mostrar/Ocultar Senha"
+          >
+            <i data-lucide="eye" id="eye-icon-login" class="w-4 h-4"></i>
+          </button>
         </div>
+        <p id="password-error-text" class="text-[10px] text-rose-400 hidden pt-0.5">A senha deve ter no mínimo 6 caracteres.</p>
       </div>
 
       <div id="login-error" class="text-xs text-rose-400 font-medium text-center hidden"></div>
 
+      <!-- BOTÃO DE LOGIN -->
       <button 
         type="submit" 
         id="login-btn"
-        class="w-full py-3 bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-600/30 transition cursor-pointer flex items-center justify-center gap-2"
+        disabled
+        class="w-full py-3 bg-gradient-to-r from-brand-600 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-brand-600/30 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
       >
         <span>Entrar na Plataforma</span>
         <i data-lucide="arrow-right" class="w-4 h-4"></i>
       </button>
     </form>
 
-    <div class="text-center pt-2 border-t border-slate-800/80">
-      <p class="text-[11px] text-slate-500">Projeto Integrador • UNIVESP</p>
+    <!-- ÁREA DE CRIAR NOVO USUÁRIO -->
+    <div class="pt-4 border-t border-slate-800/80 text-center space-y-2">
+      <p class="text-xs text-slate-400">Ainda não tem uma conta?</p>
+      <button 
+        onclick="abrirModalCadastro()" 
+        class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs border border-slate-700 transition cursor-pointer flex items-center justify-center gap-1.5"
+      >
+        <i data-lucide="user-plus" class="w-4 h-4 text-brand-400"></i>
+        <span>Criar Novo Usuário</span>
+      </button>
+      <p class="text-[10px] text-slate-500 pt-2">Projeto Integrador • UNIVESP</p>
     </div>
 
+  </div>
+
+  <!-- MODAL 1: CRIAR NOVO USUÁRIO -->
+  <div id="modal-cadastro" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i data-lucide="user-plus" class="w-4 h-4 text-brand-400"></i> Criar Conta
+        </h3>
+        <button onclick="fecharModal('modal-cadastro')" class="text-slate-400 hover:text-white p-1 rounded cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleCadastrarUsuario(event)" class="space-y-3">
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Seu Nome</label>
+          <input type="text" id="cad-nome" required placeholder="Nome completo" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white">
+        </div>
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">E-mail</label>
+          <input type="email" id="cad-email" required placeholder="seuemail@dominio.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white">
+        </div>
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Senha (Mín. 6 dígitos)</label>
+          <div class="relative">
+            <input type="password" id="cad-password" required minlength="6" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 pr-8 text-xs text-white">
+            <button type="button" onclick="togglePasswordVisibility('cad-password', 'eye-icon-cad')" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500">
+              <i data-lucide="eye" id="eye-icon-cad" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="cad-msg" class="text-xs text-center hidden"></div>
+
+        <button type="submit" id="btn-cad-submit" class="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg text-xs transition cursor-pointer">
+          Cadastrar e Acessar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ESQUECI MINHA SENHA -->
+  <div id="modal-esqueci" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i data-lucide="key-round" class="w-4 h-4 text-amber-400"></i> Recuperar Senha
+        </h3>
+        <button onclick="fecharModal('modal-esqueci')" class="text-slate-400 hover:text-white p-1 rounded cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleRecuperarSenha(event)" class="space-y-3">
+        <p class="text-xs text-slate-400 leading-relaxed">Digite o seu e-mail cadastrado para enviarmos as instruções de redefinição de senha.</p>
+        <div class="space-y-1">
+          <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">E-mail Cadastrado</label>
+          <input type="email" id="reset-email" required placeholder="seuemail@dominio.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white">
+        </div>
+
+        <div id="reset-msg" class="text-xs text-center hidden"></div>
+
+        <button type="submit" id="btn-reset-submit" class="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg text-xs transition cursor-pointer">
+          Enviar E-mail de Recuperação
+        </button>
+      </form>
+    </div>
   </div>
 
   <script>
@@ -109,6 +209,59 @@
       if (window.lucide) window.lucide.createIcons();
     };
 
+    // ALTERNAR MOSTRAR/OCULTAR SENHA
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    // VALIDAÇÕES RIGOROSAS
+    function validarEmailInput() {
+      const emailInput = document.getElementById('login-email');
+      const passwordInput = document.getElementById('login-password');
+      const emailError = document.getElementById('email-error-text');
+      
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const isValid = emailRegex.test(emailInput.value.trim());
+
+      if (isValid) {
+        emailError.classList.add('hidden');
+        passwordInput.disabled = false;
+      } else {
+        emailError.classList.remove('hidden');
+        passwordInput.disabled = true;
+        passwordInput.value = '';
+        validarSenhaInput();
+      }
+    }
+
+    function validarSenhaInput() {
+      const passwordInput = document.getElementById('login-password');
+      const passwordError = document.getElementById('password-error-text');
+      const loginBtn = document.getElementById('login-btn');
+
+      const isValid = passwordInput.value.trim().length >= 6;
+
+      if (isValid) {
+        passwordError.classList.add('hidden');
+        loginBtn.disabled = false;
+      } else {
+        passwordError.classList.remove('hidden');
+        loginBtn.disabled = true;
+      }
+    }
+
+    // SUBMIT DO LOGIN
     async function handleLogin(event) {
       event.preventDefault();
       const email = document.getElementById('login-email').value.trim();
@@ -122,23 +275,25 @@
       if (window.lucide) window.lucide.createIcons();
 
       try {
-        let userData = { email, perfil: email.includes('admin') ? 'ADMIN' : 'OPERADOR', nome: email.split('@')[0] };
+        let userData = { 
+          email: email,
+          usuario: email, 
+          perfil: (email.toLowerCase().includes('admin') || email.toLowerCase().includes('abner')) ? 'ADMIN' : 'OPERADOR', 
+          nome: email.split('@')[0] 
+        };
 
-        // Tenta autenticação real via Supabase se disponível
         const client = window.supabaseClient || window.supabase;
-        if (client) {
+        if (client && typeof client.auth?.signInWithPassword === 'function') {
           const { data, error } = await client.auth.signInWithPassword({ email, password });
           if (!error && data?.user) {
             userData.usuario = data.user.email;
           }
         }
 
-        // Salva a sessão no navegador para que o home.html reconheça o utilizador
         localStorage.setItem('user_session', JSON.stringify(userData));
         localStorage.setItem('usuario_logado', JSON.stringify(userData));
 
-        // REDIRECIONAMENTO CORRETO: Envia para a nova home.html
-        window.location.href = 'home.html';
+        window.location.replace('home.html');
 
       } catch (err) {
         errorDiv.textContent = "Erro ao efetuar login: " + err.message;
@@ -147,6 +302,64 @@
         btn.innerHTML = `<span>Entrar na Plataforma</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
         if (window.lucide) window.lucide.createIcons();
       }
+    }
+
+    // MODAIS DE CADASTRO E RECUPERAÇÃO DE SENHA
+    function abrirModalCadastro() { document.getElementById('modal-cadastro').classList.remove('hidden'); }
+    function abrirModalEsqueciSenha() { document.getElementById('modal-esqueci').classList.remove('hidden'); }
+    function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    async function handleCadastrarUsuario(e) {
+      e.preventDefault();
+      const nome = document.getElementById('cad-nome').value.trim();
+      const email = document.getElementById('cad-email').value.trim();
+      const password = document.getElementById('cad-password').value.trim();
+      const msg = document.getElementById('cad-msg');
+
+      msg.className = "text-xs text-center text-cyan-400";
+      msg.textContent = "A criar conta...";
+      msg.classList.remove('hidden');
+
+      const client = window.supabaseClient || window.supabase;
+      if (client && typeof client.auth?.signUp === 'function') {
+        const { data, error } = await client.auth.signUp({ email, password, options: { data: { name: nome } } });
+        if (error) {
+          msg.className = "text-xs text-center text-rose-400";
+          msg.textContent = "Erro Supabase: " + error.message;
+          return;
+        }
+      }
+
+      const userData = { email, usuario: email, perfil: 'OPERADOR', nome };
+      localStorage.setItem('user_session', JSON.stringify(userData));
+      localStorage.setItem('usuario_logado', JSON.stringify(userData));
+      
+      msg.className = "text-xs text-center text-emerald-400";
+      msg.textContent = "Conta criada com sucesso! Redirecionando...";
+      setTimeout(() => { window.location.replace('home.html'); }, 1000);
+    }
+
+    async function handleRecuperarSenha(e) {
+      e.preventDefault();
+      const email = document.getElementById('reset-email').value.trim();
+      const msg = document.getElementById('reset-msg');
+
+      msg.className = "text-xs text-center text-cyan-400";
+      msg.textContent = "A enviar e-mail de redefinição...";
+      msg.classList.remove('hidden');
+
+      const client = window.supabaseClient || window.supabase;
+      if (client && typeof client.auth?.resetPasswordForEmail === 'function') {
+        const { error } = await client.auth.resetPasswordForEmail(email);
+        if (error) {
+          msg.className = "text-xs text-center text-rose-400";
+          msg.textContent = "Erro: " + error.message;
+          return;
+        }
+      }
+
+      msg.className = "text-xs text-center text-emerald-400";
+      msg.textContent = "E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.";
     }
   </script>
 </body>
